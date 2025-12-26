@@ -13,6 +13,10 @@ let myChart = null;
 // Store the last processed data globally for re-rendering
 let lastProcessedData = null;
 
+// Store raw games data for export/import functionality
+let gamesCache = [];
+let gamesCacheMetadata = null;
+
 // Load saved daily goal and setup event listener on page load
 window.addEventListener('DOMContentLoaded', () => {
     const dailyGoalInput = document.getElementById('dailyGoalInput');
@@ -43,6 +47,16 @@ window.addEventListener('DOMContentLoaded', () => {
     
     // Listen to 'input' for real-time updates as user types
     dailyGoalInput.addEventListener('input', handleGoalChange);
+    
+    // Setup Export button
+    document.getElementById('exportBtn').addEventListener('click', exportGamesData);
+    
+    // Setup Import button
+    document.getElementById('importBtn').addEventListener('click', () => {
+        document.getElementById('importFileInput').click();
+    });
+    
+    document.getElementById('importFileInput').addEventListener('change', handleImportFile);
 });
 
 document.getElementById('fetchBtn').addEventListener('click', async () => {
@@ -85,14 +99,41 @@ document.getElementById('fetchBtn').addEventListener('click', async () => {
             progressFill.style.width = `${progress}%`;
         };
         
-        const games = await fetchUserGames(username, maxGames, onProgress);
+        let games = [];
+        
+        // Check if we have cached data from import
+        if (gamesCacheMetadata && gamesCacheMetadata.username.toLowerCase() === username.toLowerCase()) {
+            // Fetch newer games first (since most recent game in cache)
+            progressText.textContent = 'Fetching recent games...';
+            const newerGames = await fetchUserGames(username, maxGames, onProgress, null, gamesCacheMetadata.mostRecentTimestamp);
+            
+            // Then fetch older games (before earliest game in cache)
+            if (newerGames.length > 0) {
+                progressText.textContent = `Found ${newerGames.length} new games. Fetching older games...`;
+            }
+            const olderGames = await fetchUserGames(username, maxGames, onProgress, gamesCacheMetadata.earliestTimestamp, null);
+            
+            // Merge: newer + cached + older (removing duplicates)
+            const allGames = [...newerGames, ...gamesCache, ...olderGames];
+            const uniqueGames = deduplicateGames(allGames);
+            games = uniqueGames;
+            
+            progressText.textContent = `✓ Loaded ${newerGames.length} new + ${gamesCache.length} cached + ${olderGames.length} older games`;
+        } else {
+            // Fresh download without cache
+            games = await fetchUserGames(username, maxGames, onProgress);
+            progressText.textContent = `✓ Successfully loaded ${games.length} games`;
+        }
+        
+        // Update cache
+        gamesCache = games;
+        updateCacheMetadata(username, games);
+        
         const data = processChessData(games, username);
         
         // Store data globally for re-rendering when goal changes
         lastProcessedData = data;
         
-        // Update completion message
-        progressText.textContent = `✓ Successfully loaded ${games.length} games`;
         progressFill.style.width = '100%';
         
         // Render all UI components
@@ -133,7 +174,6 @@ function processChessData(games, user) {
     const sortedGames = [...games].reverse();
 
     sortedGames.forEach((g, i) => {
-        console.log(g)
         // PLAYTIME: Lichess games track start and end timestamps.
         const duration = g.lastMoveAt - g.createdAt;
         totalMs += duration;
@@ -168,6 +208,23 @@ function processChessData(games, user) {
 }
 
 /**
+ * Convert minutes to hours:minutes:seconds format
+ */
+function formatMinutesToHMS(totalMinutes) {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = Math.floor(totalMinutes % 60);
+    const seconds = Math.floor((totalMinutes % 1) * 60);
+    
+    if (hours > 0) {
+        return `${hours}h ${minutes}m ${seconds}s`;
+    } else if (minutes > 0) {
+        return `${minutes}m ${seconds}s`;
+    } else {
+        return `${seconds}s`;
+    }
+}
+
+/**
  * HEATMAP RENDERER (Vanilla JS):
  * Dynamically builds a grid of divs representing the last 30 days.
  * Colors cells green when daily goal is achieved.
@@ -196,7 +253,7 @@ function renderHeatmap(dailyMinutes) {
         if (goalMet) {
             cell.classList.add('goal-achieved');
             daysGoalMet++;
-            cell.title = `${d.toDateString()}: ${Math.round(mins)} mins ✓ Goal Achieved!`;
+            cell.title = `${d.toDateString()}: ${formatMinutesToHMS(mins)} ✓ Goal Achieved!`;
         } else {
             // Intensity Thresholds (only apply if goal not met)
             if (mins > 0) {
@@ -206,8 +263,8 @@ function renderHeatmap(dailyMinutes) {
                 else cell.classList.add('level-1');
             }
             
-            const goalText = dailyGoal > 0 ? ` (${Math.round(mins)}/${dailyGoal} goal)` : '';
-            cell.title = `${d.toDateString()}: ${Math.round(mins)} mins${goalText}`;
+            const goalText = dailyGoal > 0 ? ` (${formatMinutesToHMS(mins)}/${dailyGoal}m goal)` : '';
+            cell.title = `${d.toDateString()}: ${formatMinutesToHMS(mins)}${goalText}`;
         }
         
         container.appendChild(cell);
@@ -286,4 +343,176 @@ function updateUI(data) {
     }
     
     document.getElementById('insightsList').innerHTML = insightsHTML;
+}
+
+/**
+ * EXPORT FUNCTIONALITY:
+ * Creates a JSON file with all downloaded games and metadata
+ */
+async function exportGamesData() {
+    if (!gamesCache || gamesCache.length === 0) {
+        alert('No games data to export. Please sync data first.');
+        return;
+    }
+    
+    if (!gamesCacheMetadata) {
+        alert('No metadata available. Please sync data first.');
+        return;
+    }
+    
+    try {
+        // Create export object
+        const exportData = {
+            games: gamesCache,
+            metadata: {
+                username: gamesCacheMetadata.username,
+                earliestTimestamp: gamesCacheMetadata.earliestTimestamp,
+                mostRecentTimestamp: gamesCacheMetadata.mostRecentTimestamp,
+                exportDate: Date.now(),
+                totalGames: gamesCache.length
+            }
+        };
+        
+        // Generate hash for integrity verification
+        const hash = await generateHash(exportData.games);
+        exportData.metadata.hash = hash;
+        
+        // Convert to JSON and create download
+        const jsonString = JSON.stringify(exportData, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `lichess-games-${gamesCacheMetadata.username}-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        console.log('✓ Export successful:', exportData.metadata);
+    } catch (e) {
+        alert(`Export failed: ${e.message}`);
+        console.error('Export error:', e);
+    }
+}
+
+/**
+ * IMPORT FUNCTIONALITY:
+ * Loads games from a JSON file and validates integrity
+ */
+async function handleImportFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const progressIndicator = document.getElementById('progressIndicator');
+    const progressText = document.getElementById('progressText');
+    const progressFill = document.getElementById('progressFill');
+    
+    try {
+        progressIndicator.style.display = 'block';
+        progressText.textContent = 'Reading import file...';
+        progressFill.style.width = '30%';
+        
+        const fileContent = await file.text();
+        const importData = JSON.parse(fileContent);
+        
+        // Validate structure
+        if (!importData.games || !importData.metadata) {
+            throw new Error('Invalid file format: missing games or metadata');
+        }
+        
+        if (!importData.metadata.hash) {
+            throw new Error('Invalid file format: missing integrity hash');
+        }
+        
+        progressText.textContent = 'Verifying data integrity...';
+        progressFill.style.width = '60%';
+        
+        // Verify hash
+        const isValid = await verifyHash(importData.games, importData.metadata.hash);
+        if (!isValid) {
+            throw new Error('Data integrity check failed: file may have been tampered with');
+        }
+        
+        progressText.textContent = 'Loading games...';
+        progressFill.style.width = '90%';
+        
+        // Update username field
+        document.getElementById('usernameInput').value = importData.metadata.username;
+        
+        // Load games into cache
+        gamesCache = importData.games;
+        gamesCacheMetadata = {
+            username: importData.metadata.username,
+            earliestTimestamp: importData.metadata.earliestTimestamp,
+            mostRecentTimestamp: importData.metadata.mostRecentTimestamp
+        };
+        
+        // Process and render data
+        const data = processChessData(gamesCache, importData.metadata.username);
+        lastProcessedData = data;
+        
+        renderHeatmap(data.dailyMinutes);
+        renderBarChart(data.typeDistribution);
+        updateUI(data);
+        
+        progressText.textContent = `✓ Successfully imported ${gamesCache.length} games`;
+        progressFill.style.width = '100%';
+        
+        setTimeout(() => {
+            progressIndicator.style.display = 'none';
+            progressFill.style.width = '0%';
+        }, 2000);
+        
+        console.log('✓ Import successful:', importData.metadata);
+        
+    } catch (e) {
+        progressText.textContent = `✗ Import failed: ${e.message}`;
+        progressFill.style.width = '0%';
+        setTimeout(() => {
+            progressIndicator.style.display = 'none';
+        }, 3000);
+        console.error('Import error:', e);
+    } finally {
+        // Reset file input
+        event.target.value = '';
+    }
+}
+
+/**
+ * Update cache metadata based on current games
+ */
+function updateCacheMetadata(username, games) {
+    if (!games || games.length === 0) {
+        gamesCacheMetadata = null;
+        return;
+    }
+    
+    const timestamps = games.map(g => g.createdAt);
+    gamesCacheMetadata = {
+        username: username,
+        earliestTimestamp: Math.min(...timestamps),
+        mostRecentTimestamp: Math.max(...timestamps)
+    };
+}
+
+/**
+ * Remove duplicate games based on game ID
+ */
+function deduplicateGames(games) {
+    const seen = new Set();
+    const unique = [];
+    
+    for (const game of games) {
+        if (!seen.has(game.id)) {
+            seen.add(game.id);
+            unique.push(game);
+        }
+    }
+    
+    // Sort by timestamp (most recent first)
+    unique.sort((a, b) => b.createdAt - a.createdAt);
+    
+    return unique;
 }

@@ -5,9 +5,18 @@
  * without crashing the browser memory.
  */
 
-async function fetchUserGames(username, maxGames = 300, progressCallback = null) {
+async function fetchUserGames(username, maxGames = 300, progressCallback = null, untilTimestamp = null, sinceTimestamp = null) {
     // maxGames: Configurable number of games to fetch. perfType filters for competitive chess only.
-    const url = `https://lichess.org/api/games/user/${username}?max=${maxGames}&perfType=bullet,blitz,rapid,classical&moves=false`;
+    // untilTimestamp: Fetch games played before this timestamp (milliseconds)
+    // sinceTimestamp: Fetch games played after this timestamp (milliseconds)
+    let url = `https://lichess.org/api/games/user/${username}?max=${maxGames}&perfType=bullet,blitz,rapid,classical&moves=false`;
+    
+    if (untilTimestamp) {
+        url += `&until=${untilTimestamp}`;
+    }
+    if (sinceTimestamp) {
+        url += `&since=${sinceTimestamp}`;
+    }
     
     const response = await fetch(url, { 
         headers: { 'Accept': 'application/x-ndjson' } 
@@ -49,4 +58,23 @@ async function fetchUserGames(username, maxGames = 300, progressCallback = null)
         }
     }
     return games;
+}
+
+/**
+ * Generate SHA-256 hash for data integrity verification
+ */
+async function generateHash(data) {
+    const encoder = new TextEncoder();
+    const dataBuffer = encoder.encode(JSON.stringify(data));
+    const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Verify SHA-256 hash matches the data
+ */
+async function verifyHash(data, expectedHash) {
+    const actualHash = await generateHash(data);
+    return actualHash === expectedHash;
 }

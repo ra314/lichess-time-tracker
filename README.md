@@ -33,20 +33,48 @@ The hour with the highest $P_h$ (minimum 4 games) is highlighted as the user's m
 - [x] **Daily Goals:** Allow users to set a "mins/day" goal and color the heatmap green when achieved.
 - [x] **Download Number:** Number of games to download should be a configurable field on the UI.
 - [x] **Progress Bar:** Display real-time download progress showing the current date being processed and total number of games downloaded so far.
-- [ ] **Persistent Storing of Downloaded Data:** Reduce load on lichess by storing loaded games.
-  - Add an import and export button.
-  - Export:
-    - Export should be in JSON.
-    - Export should include all of the games currently downloaded.
-    - Export should contain metadata fields.
-      - Hash of the export, to prevent unintentional tampering by users.
+- [x] **Persistent Storing of Downloaded Data:** Reduce load on lichess by storing loaded games.
+  - [x] Add an import and export button.
+  - [x] Export:
+    - Export is in JSON format.
+    - Export includes all of the games currently downloaded.
+    - Export contains metadata fields:
+      - SHA-256 hash of the export, to prevent unintentional tampering by users.
       - Username of the user for whom the export was generated.
       - Timestamp of the earliest and most recent game in the list of games.
-  - Import:
-    - Should be capable of importing the games and metadata from the JSON through providing a file.
-    - The username field should be replaced with the username provide in the import.
-    - Data validation: Ensure that the hash present in the metadata is valid and that no tampering has occured.
-    - If the sync button is pressed after import:
-      - It should first attempt to download all games from the timestamp of the most recent game in the import file to the current timestamp.
-      - After it has downloaded all of these games, then start downloading games previous to the earliest timestamp.
+      - Export date and total game count.
+  - [x] Import:
+    - Imports games and metadata from JSON file.
+    - Username field is populated with the username from the import.
+    - Data validation: Hash verification ensures no tampering has occurred.
+    - When sync button is pressed after import:
+      - Downloads all games from the timestamp of the most recent game to current timestamp.
+      - Downloads games previous to the earliest timestamp.
+      - Deduplicates games to prevent conflicts.
 - [ ] **OAuth2 Authentication** Authenticated users can download at 60 games per second, which we would prefer.
+
+## 📦 Import/Export Feature
+
+### Exporting Games
+1. Click the **Export** button after syncing data
+2. A JSON file will be downloaded containing:
+   - All downloaded games
+   - Metadata (username, timestamps, hash)
+3. File naming: `lichess-games-{username}-{date}.json`
+
+### Importing Games
+1. Click the **Import** button
+2. Select a previously exported JSON file
+3. The app will:
+   - Verify data integrity using SHA-256 hash
+   - Load all games into the dashboard
+   - Populate the username field
+4. After import, clicking **Sync Data** will:
+   - Fetch newer games (after most recent cached game)
+   - Fetch older games (before earliest cached game)
+   - Merge and deduplicate all games
+
+### Security
+- **SHA-256 Hashing:** All exports include a cryptographic hash to detect tampering
+- **Validation:** Imports are rejected if the hash doesn't match the data
+- **Deduplication:** Games are deduplicated by ID to prevent data corruption
