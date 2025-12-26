@@ -2,6 +2,8 @@
 
 A Steam/Strava-style activity tracker for Lichess players. This dashboard helps users transition from "mindless playing" to "intentional practice" by visualizing time spent at the board.
 
+> 🤖 **Note:** This entire application was vibe-coded using AI assistance, showcasing rapid prototyping and iterative development.
+
 ## 🚀 Overview
 The app fetches real-time game data via the Lichess API, calculates total playtime (lastMoveAt - createdAt), and provides accountability metrics such as binge detection and peak performance windows.
 
@@ -12,9 +14,11 @@ The app fetches real-time game data via the Lichess API, calculates total playti
 
 ## 📊 Features
 - **Scrollable Calendar Heatmap:** View your entire playing history in a calendar format with day labels, date numbers, and month headers
-- **Daily Goals:** Set custom daily time goals and track achievement with visual indicators
+- **Flexible Daily Goals:** Set goals based on either time played or number of games, with customizable targets
+- **Game Type Filters:** Filter heatmap data by Bullet, Blitz, Rapid, or Classical time controls
 - **Activity Levels:** Color-coded intensity showing playing patterns
-- **Export/Import:** Save and restore your game data locally
+- **Time Period Tracking:** See the full span of your downloaded game history
+- **Export/Import:** Save and restore your game data locally with integrity verification
 - **Real-time Progress:** Watch as games download with live progress indicators
 
 ## 🧠 Logic & Metrics

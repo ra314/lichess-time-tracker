@@ -27,26 +27,81 @@ window.addEventListener('DOMContentLoaded', () => {
         dailyGoalInput.value = savedGoal;
     }
     
+    // Load saved goal type from localStorage
+    const savedGoalType = localStorage.getItem('goalType');
+    const goalTypeSelect = document.getElementById('goalTypeSelect');
+    if (savedGoalType !== null) {
+        goalTypeSelect.value = savedGoalType;
+    }
+    
+    // Update goal input label based on type
+    updateGoalLabel();
+    
+    // Load saved game type filters from localStorage
+    const gameTypes = ['bullet', 'blitz', 'rapid', 'classical'];
+    gameTypes.forEach(type => {
+        const checkbox = document.getElementById(`filter${type.charAt(0).toUpperCase() + type.slice(1)}`);
+        const savedState = localStorage.getItem(`filter_${type}`);
+        if (savedState !== null) {
+            checkbox.checked = savedState === 'true';
+        }
+    });
+    
     // Handle goal changes - use 'input' event for real-time updates
     const handleGoalChange = () => {
+        const goalType = goalTypeSelect.value;
         let goalValue = parseInt(dailyGoalInput.value);
+        
         if (isNaN(goalValue) || goalValue < 0) {
             goalValue = 0;
-        } else if (goalValue > 1440) {
-            goalValue = 1440;
-            dailyGoalInput.value = 1440;
+        } else {
+            // Set max based on goal type
+            const maxValue = goalType === 'minutes' ? 1440 : 500;
+            if (goalValue > maxValue) {
+                goalValue = maxValue;
+                dailyGoalInput.value = maxValue;
+            }
         }
+        
         localStorage.setItem('dailyGoal', goalValue);
         
         // Re-render heatmap and insights if data exists
         if (lastProcessedData !== null) {
-            renderHeatmap(lastProcessedData.dailyMinutes);
+            renderHeatmap(lastProcessedData.dailyMinutes, lastProcessedData.dailyMinutesByType, lastProcessedData.dailyGames);
             updateUI(lastProcessedData);
         }
     };
     
+    // Handle goal type changes
+    const handleGoalTypeChange = () => {
+        localStorage.setItem('goalType', goalTypeSelect.value);
+        updateGoalLabel();
+        handleGoalChange();
+    };
+    
     // Listen to 'input' for real-time updates as user types
     dailyGoalInput.addEventListener('input', handleGoalChange);
+    goalTypeSelect.addEventListener('change', handleGoalTypeChange);
+    
+    // Handle game type filter changes
+    const handleFilterChange = () => {
+        gameTypes.forEach(type => {
+            const checkbox = document.getElementById(`filter${type.charAt(0).toUpperCase() + type.slice(1)}`);
+            localStorage.setItem(`filter_${type}`, checkbox.checked);
+        });
+        
+        // Re-render heatmap if data exists
+        if (lastProcessedData !== null) {
+            renderHeatmap(lastProcessedData.dailyMinutes, lastProcessedData.dailyMinutesByType, lastProcessedData.dailyGames);
+            updateUI(lastProcessedData);
+        }
+    };
+    
+    // Attach filter change listeners
+    gameTypes.forEach(type => {
+        const checkbox = document.getElementById(`filter${type.charAt(0).toUpperCase() + type.slice(1)}`);
+        checkbox.addEventListener('change', handleFilterChange);
+    });
     
     // Setup Export button
     document.getElementById('exportBtn').addEventListener('click', exportGamesData);
@@ -137,9 +192,10 @@ document.getElementById('fetchBtn').addEventListener('click', async () => {
         progressFill.style.width = '100%';
         
         // Render all UI components
-        renderHeatmap(data.dailyMinutes);
+        renderHeatmap(data.dailyMinutes, data.dailyMinutesByType, data.dailyGames);
         renderBarChart(data.typeDistribution);
         updateUI(data);
+        updateTimePeriod();
         
         // Hide progress after a short delay
         setTimeout(() => {
@@ -166,6 +222,7 @@ document.getElementById('fetchBtn').addEventListener('click', async () => {
 function processChessData(games, user) {
     let totalMs = 0;
     const dailyMinutes = {};
+    const dailyMinutesByType = {}; // Store per-day minutes broken down by game type
     const typeDist = { Bullet: 0, Blitz: 0, Rapid: 0, Classical: 0 };
     const hourlyWins = {};
     let bingeCount = 0;
@@ -181,14 +238,22 @@ function processChessData(games, user) {
         // HEATMAP: Group by day (Unix timestamp at midnight)
         const date = new Date(g.createdAt).setHours(0,0,0,0);
         dailyMinutes[date] = (dailyMinutes[date] || 0) + (duration / 60000);
+        
+        // Track minutes by type for filtering
+        const speed = g.speed.charAt(0).toUpperCase() + g.speed.slice(1);
+        if (!dailyMinutesByType[date]) {
+            dailyMinutesByType[date] = { Bullet: 0, Blitz: 0, Rapid: 0, Classical: 0 };
+        }
+        if (dailyMinutesByType[date].hasOwnProperty(speed)) {
+            dailyMinutesByType[date][speed] += (duration / 60000);
+        }
 
         // FORMATS: Calculate minutes per time control
-        const speed = g.speed.charAt(0).toUpperCase() + g.speed.slice(1);
         if (typeDist.hasOwnProperty(speed)) {
             typeDist[speed] += (duration / 60000);
         }
 
-        // PEAK PERFORMANCE: Track wins by hour of the day
+        // PEAK PERFORMANCE: Track wins by hour of the day (local timezone)
         const hour = new Date(g.createdAt).getHours();
         if (!hourlyWins[hour]) hourlyWins[hour] = { total: 0, wins: 0 };
         hourlyWins[hour].total++;
@@ -204,7 +269,14 @@ function processChessData(games, user) {
         }
     });
 
-    return { totalMs, dailyMinutes, typeDistribution: typeDist, bingeCount, totalGames: games.length, hourlyWins };
+    // Track daily game counts
+    const dailyGames = {};
+    sortedGames.forEach(g => {
+        const date = new Date(g.createdAt).setHours(0,0,0,0);
+        dailyGames[date] = (dailyGames[date] || 0) + 1;
+    });
+
+    return { totalMs, dailyMinutes, dailyMinutesByType, dailyGames, typeDistribution: typeDist, bingeCount, totalGames: games.length, hourlyWins };
 }
 
 /**
@@ -228,18 +300,46 @@ function formatMinutesToHMS(totalMinutes) {
  * HEATMAP RENDERER (Vanilla JS):
  * Dynamically builds a scrollable calendar grid showing all available data.
  * Displays day labels, date numbers, and month labels.
+ * Filters by selected game types.
  */
-function renderHeatmap(dailyMinutes) {
+function renderHeatmap(dailyMinutes, dailyMinutesByType = null, dailyGames = null) {
     const container = document.getElementById('heatmap');
     container.innerHTML = '';
     
     // Get daily goal from input
     const dailyGoal = parseInt(document.getElementById('dailyGoalInput').value) || 0;
+    const goalType = document.getElementById('goalTypeSelect').value;
+    
+    // Get active game type filters
+    const activeFilters = [];
+    ['Bullet', 'Blitz', 'Rapid', 'Classical'].forEach(type => {
+        const checkbox = document.getElementById(`filter${type}`);
+        if (checkbox && checkbox.checked) {
+            activeFilters.push(type);
+        }
+    });
+    
+    // Calculate filtered daily minutes
+    let filteredDailyMinutes = dailyMinutes;
+    let filteredDailyGames = dailyGames || {};
+    
+    if (dailyMinutesByType && activeFilters.length > 0) {
+        filteredDailyMinutes = {};
+        for (const date in dailyMinutesByType) {
+            let totalMins = 0;
+            activeFilters.forEach(type => {
+                totalMins += dailyMinutesByType[date][type] || 0;
+            });
+            if (totalMins > 0) {
+                filteredDailyMinutes[date] = totalMins;
+            }
+        }
+    }
     
     // Get date range from data
-    const timestamps = Object.keys(dailyMinutes).map(t => parseInt(t));
+    const timestamps = Object.keys(filteredDailyMinutes).map(t => parseInt(t));
     if (timestamps.length === 0) {
-        container.innerHTML = '<p class="placeholder">No activity data available.</p>';
+        container.innerHTML = '<p class="placeholder">No activity data available for selected filters.</p>';
         return;
     }
     
@@ -282,7 +382,8 @@ function renderHeatmap(dailyMinutes) {
     const currentDate = new Date(startDate);
     while (currentDate <= endDate) {
         const timestamp = currentDate.getTime();
-        const mins = dailyMinutes[timestamp] || 0;
+        const mins = filteredDailyMinutes[timestamp] || 0;
+        const games = filteredDailyGames[timestamp] || 0;
         
         // Check if we need to add a month label
         const month = currentDate.getMonth();
@@ -306,14 +407,18 @@ function renderHeatmap(dailyMinutes) {
         cell.appendChild(dateNumber);
         
         // Check if daily goal is met (and goal is > 0)
-        const goalMet = dailyGoal > 0 && mins >= dailyGoal;
+        const goalValue = goalType === 'minutes' ? mins : games;
+        const goalMet = dailyGoal > 0 && goalValue >= dailyGoal;
         
         if (mins > 0) totalDaysWithData++;
         
         if (goalMet) {
             cell.classList.add('goal-achieved');
             daysGoalMet++;
-            cell.title = `${currentDate.toDateString()}: ${formatMinutesToHMS(mins)} ✓ Goal Achieved!`;
+            const goalText = goalType === 'minutes' 
+                ? `${formatMinutesToHMS(mins)} (${dailyGoal}m goal)` 
+                : `${games} games (${dailyGoal} game goal)`;
+            cell.title = `${currentDate.toDateString()}: ${goalText} ✓ Goal Achieved!`;
         } else {
             // Intensity Thresholds (only apply if goal not met)
             if (mins > 0) {
@@ -323,8 +428,15 @@ function renderHeatmap(dailyMinutes) {
                 else cell.classList.add('level-1');
             }
             
-            const goalText = dailyGoal > 0 ? ` (${formatMinutesToHMS(mins)}/${dailyGoal}m goal)` : '';
-            cell.title = `${currentDate.toDateString()}: ${formatMinutesToHMS(mins)}${goalText}`;
+            let goalText = '';
+            if (dailyGoal > 0) {
+                if (goalType === 'minutes') {
+                    goalText = ` (${formatMinutesToHMS(mins)}/${dailyGoal}m goal)`;
+                } else {
+                    goalText = ` (${games}/${dailyGoal} games goal)`;
+                }
+            }
+            cell.title = `${currentDate.toDateString()}: ${formatMinutesToHMS(mins)} (${games} games)${goalText}`;
         }
         
         // Dim future dates or dates before data started
@@ -391,7 +503,7 @@ function updateUI(data) {
     document.getElementById('totalTime').innerText = `${hrs}h ${mins}m`;
     document.getElementById('totalGames').innerText = data.totalGames;
 
-    // Identify hour with highest win rate (min 4 games played)
+    // Identify hour with highest win rate (min 4 games played) - in local timezone
     let bestH = -1, maxRate = 0;
     for (let h in data.hourlyWins) {
         let rate = data.hourlyWins[h].wins / data.hourlyWins[h].total;
@@ -400,6 +512,14 @@ function updateUI(data) {
             bestH = h; 
         }
     }
+    
+    // Format hour in 12-hour format with AM/PM
+    const formatHour = (hour) => {
+        const h = parseInt(hour);
+        const period = h >= 12 ? 'PM' : 'AM';
+        const displayHour = h === 0 ? 12 : (h > 12 ? h - 12 : h);
+        return `${displayHour}:00 ${period}`;
+    };
 
     // Get goal achievement data from heatmap
     const heatmapContainer = document.getElementById('heatmap');
@@ -408,7 +528,7 @@ function updateUI(data) {
     
     // Build insights with optional goal insight
     let insightsHTML = `
-        <div class="insight-item">🔥 Peak Performance: <b>${bestH >= 0 ? bestH+':00' : 'N/A'}</b> (Highest win rate).</div>
+        <div class="insight-item">🔥 Peak Performance: <b>${bestH >= 0 ? formatHour(bestH) : 'N/A'}</b> (Highest win rate).</div>
         <div class="insight-item">⚠️ Binge Warning: <b>${data.bingeCount}</b> high-density sessions detected.</div>
         <div class="insight-item">🎯 Most Active: <b>${Object.keys(data.typeDistribution).reduce((a, b) => data.typeDistribution[a] > data.typeDistribution[b] ? a : b)}</b> is your primary time sink.</div>
     `;
@@ -420,6 +540,25 @@ function updateUI(data) {
     }
     
     document.getElementById('insightsList').innerHTML = insightsHTML;
+}
+
+/**
+ * Update goal label based on goal type
+ */
+function updateGoalLabel() {
+    const goalType = document.getElementById('goalTypeSelect').value;
+    const goalLabel = document.querySelector('.goal-label');
+    const dailyGoalInput = document.getElementById('dailyGoalInput');
+    
+    if (goalType === 'minutes') {
+        goalLabel.textContent = 'min/day';
+        dailyGoalInput.max = 1440;
+        dailyGoalInput.placeholder = 'Minutes';
+    } else {
+        goalLabel.textContent = 'games/day';
+        dailyGoalInput.max = 500;
+        dailyGoalInput.placeholder = 'Games';
+    }
 }
 
 /**
@@ -530,9 +669,10 @@ async function handleImportFile(event) {
         const data = processChessData(gamesCache, importData.metadata.username);
         lastProcessedData = data;
         
-        renderHeatmap(data.dailyMinutes);
+        renderHeatmap(data.dailyMinutes, data.dailyMinutesByType, data.dailyGames);
         renderBarChart(data.typeDistribution);
         updateUI(data);
+        updateTimePeriod();
         
         progressText.textContent = `✓ Successfully imported ${gamesCache.length} games`;
         progressFill.style.width = '100%';
@@ -592,4 +732,46 @@ function deduplicateGames(games) {
     unique.sort((a, b) => b.createdAt - a.createdAt);
     
     return unique;
+}
+
+/**
+ * Update time period display
+ */
+function updateTimePeriod() {
+    if (!gamesCacheMetadata) {
+        document.getElementById('timePeriod').innerText = 'N/A';
+        return;
+    }
+    
+    const earliest = new Date(gamesCacheMetadata.earliestTimestamp);
+    const mostRecent = new Date(gamesCacheMetadata.mostRecentTimestamp);
+    
+    // Calculate difference
+    const diffMs = mostRecent - earliest;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    const years = Math.floor(diffDays / 365);
+    const months = Math.floor((diffDays % 365) / 30);
+    const days = Math.floor((diffDays % 365) % 30);
+    
+    let periodText = '';
+    if (years > 0) periodText += `${years} year${years > 1 ? 's' : ''} `;
+    if (months > 0) periodText += `${months} month${months > 1 ? 's' : ''} `;
+    periodText += `${days} day${days !== 1 ? 's' : ''}`;
+    
+    document.getElementById('timePeriod').innerText = periodText.trim();
+    
+    // Format timestamps for tooltip
+    const formatTimestamp = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hour = String(date.getHours()).padStart(2, '0');
+        const minute = String(date.getMinutes()).padStart(2, '0');
+        const second = String(date.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+    };
+    
+    const tooltip = `Earliest: ${formatTimestamp(earliest)}\nMost Recent: ${formatTimestamp(mostRecent)}`;
+    document.getElementById('timePeriod').parentElement.title = tooltip;
 }
