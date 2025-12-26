@@ -1,0 +1,126 @@
+/**
+ * CSS VARIABLES: Centralized palette inspired by Lichess "Carbon" theme
+ */
+:root {
+    --bg-dark: #161512;
+    --card-bg: #262421;
+    --accent: #3692e7;     /* Standard Lichess blue */
+    --text-main: #bababa;
+    --text-bright: #ffffff;
+    --danger: #ef5350;     /* Used for binge/tilt alerts */
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: system-ui, -apple-system, sans-serif;
+    margin: 0; 
+    padding: 20px;
+}
+
+.container { 
+    max-width: 1100px; 
+    margin: 0 auto; 
+}
+
+/* DASHBOARD HEADER: Steam-style horizontal layout */
+.dashboard-header {
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+    margin-bottom: 30px; 
+    flex-wrap: wrap; 
+    gap: 20px;
+}
+
+.stats-grid { display: flex; gap: 15px; }
+
+.stat-card {
+    background: var(--card-bg); 
+    padding: 15px 20px;
+    border-radius: 8px; 
+    border-bottom: 3px solid var(--accent);
+    min-width: 110px; 
+    text-align: center;
+}
+
+.stat-card .value { 
+    display: block; 
+    font-size: 1.4rem; 
+    font-weight: bold; 
+    color: var(--text-bright); 
+}
+
+/* MAIN LAYOUT: Responsive Grid */
+.dashboard-grid {
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 20px;
+}
+
+.heatmap-section { grid-column: span 2; }
+
+.card { 
+    background: var(--card-bg); 
+    padding: 20px; 
+    border-radius: 8px; 
+}
+
+/**
+ * CUSTOM CSS HEATMAP: 
+ * Using CSS Grid allows us to create a Strava-style activity map 
+ * without relying on heavy external libraries like D3.
+ */
+.heatmap-container {
+    display: grid; 
+    grid-template-columns: repeat(15, 1fr); 
+    gap: 6px; 
+    margin: 20px 0;
+}
+
+/* Cells change color based on the 'level-x' class added via JavaScript */
+.day-cell {
+    aspect-ratio: 1/1; 
+    background: #2e2b27; 
+    border-radius: 2px;
+}
+
+/* Intensity Levels: Represent minutes played per day */
+.level-1 { background: #1e3a5f; } /* Low activity */
+.level-2 { background: #2b5a91; }
+.level-3 { background: #3692e7; }
+.level-4 { background: #92cbff; } /* High activity (Binge zone) */
+
+.heatmap-legend { 
+    display: flex; 
+    align-items: center; 
+    gap: 8px; 
+    justify-content: flex-end; 
+    font-size: 12px; 
+}
+
+.heatmap-legend .day-cell { width: 12px; }
+
+/* INPUT STYLES */
+.search-area input { 
+    background: #1a1917; 
+    border: 1px solid #403d39; 
+    color: white; 
+    padding: 10px; 
+    border-radius: 4px; 
+}
+
+.search-area button { 
+    background: var(--accent); 
+    color: white; 
+    border: none; 
+    padding: 10px 20px; 
+    border-radius: 4px; 
+    cursor: pointer; 
+}
+
+.insight-item { 
+    padding: 12px 0; 
+    border-bottom: 1px solid #403d39; 
+    font-size: 0.95rem; 
+}
