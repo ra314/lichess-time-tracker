@@ -226,8 +226,8 @@ function formatMinutesToHMS(totalMinutes) {
 
 /**
  * HEATMAP RENDERER (Vanilla JS):
- * Dynamically builds a grid of divs representing the last 30 days.
- * Colors cells green when daily goal is achieved.
+ * Dynamically builds a scrollable calendar grid showing all available data.
+ * Displays day labels, date numbers, and month labels.
  */
 function renderHeatmap(dailyMinutes) {
     const container = document.getElementById('heatmap');
@@ -236,24 +236,84 @@ function renderHeatmap(dailyMinutes) {
     // Get daily goal from input
     const dailyGoal = parseInt(document.getElementById('dailyGoalInput').value) || 0;
     
-    let daysGoalMet = 0;
+    // Get date range from data
+    const timestamps = Object.keys(dailyMinutes).map(t => parseInt(t));
+    if (timestamps.length === 0) {
+        container.innerHTML = '<p class="placeholder">No activity data available.</p>';
+        return;
+    }
     
-    for (let i = 29; i >= 0; i--) {
-        const d = new Date(); 
-        d.setHours(0,0,0,0); 
-        d.setDate(d.getDate() - i);
+    const minDate = new Date(Math.min(...timestamps));
+    const maxDate = new Date();
+    
+    // Start from the Sunday before the earliest date
+    const startDate = new Date(minDate);
+    startDate.setDate(minDate.getDate() - minDate.getDay());
+    startDate.setHours(0, 0, 0, 0);
+    
+    // End at today
+    const endDate = new Date(maxDate);
+    endDate.setHours(0, 0, 0, 0);
+    
+    // Create day of week headers (outside scroll area)
+    const headerRow = document.createElement('div');
+    headerRow.className = 'calendar-header-row';
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    dayNames.forEach(day => {
+        const header = document.createElement('div');
+        header.className = 'day-header';
+        header.textContent = day;
+        headerRow.appendChild(header);
+    });
+    
+    // Create wrapper for scrolling
+    const scrollWrapper = document.createElement('div');
+    scrollWrapper.className = 'calendar-scroll-wrapper';
+    
+    // Create calendar grid
+    const calendar = document.createElement('div');
+    calendar.className = 'calendar-grid';
+    
+    let currentMonth = -1;
+    let daysGoalMet = 0;
+    let totalDaysWithData = 0;
+    
+    // Generate calendar cells
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+        const timestamp = currentDate.getTime();
+        const mins = dailyMinutes[timestamp] || 0;
         
-        const mins = dailyMinutes[d.getTime()] || 0;
+        // Check if we need to add a month label
+        const month = currentDate.getMonth();
+        if (month !== currentMonth) {
+            currentMonth = month;
+            const monthLabel = document.createElement('div');
+            monthLabel.className = 'month-label';
+            monthLabel.textContent = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            monthLabel.style.gridColumn = `1 / 8`;
+            calendar.appendChild(monthLabel);
+        }
+        
+        // Create day cell
         const cell = document.createElement('div');
         cell.className = 'day-cell';
+        
+        // Add date number
+        const dateNumber = document.createElement('span');
+        dateNumber.className = 'date-number';
+        dateNumber.textContent = currentDate.getDate();
+        cell.appendChild(dateNumber);
         
         // Check if daily goal is met (and goal is > 0)
         const goalMet = dailyGoal > 0 && mins >= dailyGoal;
         
+        if (mins > 0) totalDaysWithData++;
+        
         if (goalMet) {
             cell.classList.add('goal-achieved');
             daysGoalMet++;
-            cell.title = `${d.toDateString()}: ${formatMinutesToHMS(mins)} ✓ Goal Achieved!`;
+            cell.title = `${currentDate.toDateString()}: ${formatMinutesToHMS(mins)} ✓ Goal Achieved!`;
         } else {
             // Intensity Thresholds (only apply if goal not met)
             if (mins > 0) {
@@ -264,14 +324,30 @@ function renderHeatmap(dailyMinutes) {
             }
             
             const goalText = dailyGoal > 0 ? ` (${formatMinutesToHMS(mins)}/${dailyGoal}m goal)` : '';
-            cell.title = `${d.toDateString()}: ${formatMinutesToHMS(mins)}${goalText}`;
+            cell.title = `${currentDate.toDateString()}: ${formatMinutesToHMS(mins)}${goalText}`;
         }
         
-        container.appendChild(cell);
+        // Dim future dates or dates before data started
+        if (currentDate > maxDate || currentDate < minDate) {
+            cell.classList.add('out-of-range');
+        }
+        
+        calendar.appendChild(cell);
+        currentDate.setDate(currentDate.getDate() + 1);
     }
+    
+    scrollWrapper.appendChild(calendar);
+    container.appendChild(headerRow);
+    container.appendChild(scrollWrapper);
     
     // Store for insights
     container.dataset.daysGoalMet = daysGoalMet;
+    container.dataset.totalDaysWithData = totalDaysWithData;
+    
+    // Scroll to bottom (most recent dates)
+    setTimeout(() => {
+        scrollWrapper.scrollTop = scrollWrapper.scrollHeight;
+    }, 0);
 }
 
 /**
@@ -338,8 +414,9 @@ function updateUI(data) {
     `;
     
     if (dailyGoal > 0) {
-        const percentage = Math.round((daysGoalMet / 30) * 100);
-        insightsHTML += `<div class="insight-item">🎯 Goal Progress: Met daily goal on <b>${daysGoalMet}/30 days</b> (${percentage}%).</div>`;
+        const totalDaysWithData = parseInt(heatmapContainer.dataset.totalDaysWithData) || 0;
+        const percentage = totalDaysWithData > 0 ? Math.round((daysGoalMet / totalDaysWithData) * 100) : 0;
+        insightsHTML += `<div class="insight-item">🎯 Goal Progress: Met daily goal on <b>${daysGoalMet}/${totalDaysWithData} days</b> (${percentage}%).</div>`;
     }
     
     document.getElementById('insightsList').innerHTML = insightsHTML;

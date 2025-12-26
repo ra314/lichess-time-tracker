@@ -10,6 +10,13 @@ The app fetches real-time game data via the Lichess API, calculates total playti
 - **Data Visualization:** [Chart.js](https://www.chartjs.org/) for bar charts; **Native CSS Grid** for the calendar heatmap.
 - **Data Source:** [Lichess.org Open API](https://lichess.org/api) (NDJSON Stream).
 
+## 📊 Features
+- **Scrollable Calendar Heatmap:** View your entire playing history in a calendar format with day labels, date numbers, and month headers
+- **Daily Goals:** Set custom daily time goals and track achievement with visual indicators
+- **Activity Levels:** Color-coded intensity showing playing patterns
+- **Export/Import:** Save and restore your game data locally
+- **Real-time Progress:** Watch as games download with live progress indicators
+
 ## 🧠 Logic & Metrics
 ### 1. Playtime Calculation
 Playtime is calculated per game by finding the difference between the first and last move timestamps.

@@ -59,7 +59,16 @@ body {
     gap: 20px;
 }
 
-.heatmap-section { grid-column: span 2; }
+.heatmap-section { 
+    grid-column: span 2; 
+}
+
+.heatmap-section .placeholder {
+    text-align: center;
+    color: var(--text-main);
+    padding: 40px;
+    font-style: italic;
+}
 
 .card { 
     background: var(--card-bg); 
@@ -69,21 +78,94 @@ body {
 
 /**
  * CUSTOM CSS HEATMAP: 
- * Using CSS Grid allows us to create a Strava-style activity map 
- * without relying on heavy external libraries like D3.
+ * Calendar-style scrollable grid showing days, dates, and months
  */
 .heatmap-container {
-    display: grid; 
-    grid-template-columns: repeat(15, 1fr); 
-    gap: 6px; 
     margin: 20px 0;
+    position: relative;
 }
 
-/* Cells change color based on the 'level-x' class added via JavaScript */
+/* Scrollable wrapper for the calendar */
+.calendar-scroll-wrapper {
+    max-height: 500px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 1px solid #403d39;
+    border-radius: 4px;
+    padding: 10px;
+}
+
+/* Calendar grid: 7 columns for days of the week */
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    width: 100%;
+}
+
+/* Day of week header row - fixed outside scroll area */
+.calendar-header-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+    padding: 0 10px;
+    border-bottom: 2px solid #403d39;
+}
+
+.day-header {
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-bright);
+    padding: 8px 0;
+    text-transform: uppercase;
+}
+
+/* Month labels spanning full width */
+.month-label {
+    grid-column: 1 / 8;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-bright);
+    padding: 15px 0 10px 0;
+    margin-top: 10px;
+    border-top: 1px solid #403d39;
+}
+
+.month-label:first-of-type {
+    margin-top: 0;
+    border-top: none;
+    padding-top: 5px;
+}
+
+/* Day cells with date numbers */
 .day-cell {
-    aspect-ratio: 1/1; 
-    background: #2e2b27; 
-    border-radius: 2px;
+    aspect-ratio: 1/1;
+    background: #2e2b27;
+    border-radius: 4px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 50px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.day-cell:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    z-index: 1;
+}
+
+/* Date number inside cell */
+.date-number {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-main);
+    position: relative;
+    z-index: 1;
 }
 
 /* Intensity Levels: Represent minutes played per day */
@@ -92,8 +174,28 @@ body {
 .level-3 { background: #3692e7; }
 .level-4 { background: #92cbff; } /* High activity (Binge zone) */
 
+.level-1 .date-number,
+.level-2 .date-number,
+.level-3 .date-number,
+.level-4 .date-number {
+    color: var(--text-bright);
+}
+
 /* Goal Achievement: Overrides intensity levels when daily goal is met */
-.goal-achieved { background: var(--success) !important; border: 1px solid #4caf50; }
+.goal-achieved { 
+    background: var(--success) !important; 
+    border: 2px solid #4caf50;
+}
+
+.goal-achieved .date-number {
+    color: var(--text-bright);
+    font-weight: 700;
+}
+
+/* Out of range dates (before data or future) */
+.out-of-range {
+    opacity: 0.3;
+}
 
 .heatmap-legend { 
     display: flex; 
@@ -101,9 +203,33 @@ body {
     gap: 8px; 
     justify-content: flex-end; 
     font-size: 12px; 
+    margin-top: 15px;
 }
 
-.heatmap-legend .day-cell { width: 12px; }
+.heatmap-legend .day-cell { 
+    width: 20px; 
+    height: 20px;
+    min-height: 20px;
+}
+
+/* Scrollbar styling */
+.calendar-scroll-wrapper::-webkit-scrollbar {
+    width: 8px;
+}
+
+.calendar-scroll-wrapper::-webkit-scrollbar-track {
+    background: #1a1917;
+    border-radius: 4px;
+}
+
+.calendar-scroll-wrapper::-webkit-scrollbar-thumb {
+    background: #403d39;
+    border-radius: 4px;
+}
+
+.calendar-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
 
 /* INPUT STYLES */
 .search-area { 
