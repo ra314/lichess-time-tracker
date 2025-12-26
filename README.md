@@ -4,6 +4,8 @@ A Steam/Strava-style activity tracker for Lichess players. This dashboard helps 
 
 > 🤖 **Note:** This entire application was vibe-coded using AI assistance, showcasing rapid prototyping and iterative development.
 
+GitHub Pages: https://ra314.github.io/lichess-time-tracker/
+
 ## 🚀 Overview
 The app fetches real-time game data via the Lichess API, calculates total playtime (lastMoveAt - createdAt), and provides accountability metrics such as binge detection and peak performance windows.
 
