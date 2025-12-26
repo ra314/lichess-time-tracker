@@ -5,9 +5,9 @@
  * without crashing the browser memory.
  */
 
-async function fetchUserGames(username, progressCallback = null) {
-    // max=300: Keeps it fast. perfType filters for competitive chess only.
-    const url = `https://lichess.org/api/games/user/${username}?max=300&perfType=bullet,blitz,rapid,classical&moves=false`;
+async function fetchUserGames(username, maxGames = 300, progressCallback = null) {
+    // maxGames: Configurable number of games to fetch. perfType filters for competitive chess only.
+    const url = `https://lichess.org/api/games/user/${username}?max=${maxGames}&perfType=bullet,blitz,rapid,classical&moves=false`;
     
     const response = await fetch(url, { 
         headers: { 'Accept': 'application/x-ndjson' } 

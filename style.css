@@ -102,12 +102,35 @@ body {
 .heatmap-legend .day-cell { width: 12px; }
 
 /* INPUT STYLES */
+.search-area { 
+    display: flex; 
+    gap: 10px; 
+    align-items: center;
+}
+
 .search-area input { 
     background: #1a1917; 
     border: 1px solid #403d39; 
     color: white; 
     padding: 10px; 
     border-radius: 4px; 
+}
+
+.search-area input[type="text"] {
+    flex: 1;
+    min-width: 150px;
+}
+
+.search-area input[type="number"] {
+    width: 120px;
+    -moz-appearance: textfield; /* Firefox */
+}
+
+/* Hide spinner arrows in Chrome, Safari, Edge, Opera */
+.search-area input[type="number"]::-webkit-outer-spin-button,
+.search-area input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 
 .search-area button { 

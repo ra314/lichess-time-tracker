@@ -2,12 +2,28 @@
  * Main Controller: Handles data processing and UI rendering.
  */
 
+// Configuration constants for game fetching limits
+const MIN_GAMES = 1;
+const DEFAULT_MAX_GAMES = 300;
+const MAX_GAMES_LIMIT = 5000;
+
 // Global reference for Chart.js instance to allow refreshing
 let myChart = null;
 
 document.getElementById('fetchBtn').addEventListener('click', async () => {
     const username = document.getElementById('usernameInput').value.trim();
     if (!username) return;
+
+    // Get max games value from input, default to 300 if invalid
+    const maxGamesInput = document.getElementById('maxGamesInput');
+    let maxGames = parseInt(maxGamesInput.value);
+    if (isNaN(maxGames) || maxGames < MIN_GAMES) {
+        maxGames = DEFAULT_MAX_GAMES;
+        maxGamesInput.value = DEFAULT_MAX_GAMES;
+    } else if (maxGames > MAX_GAMES_LIMIT) {
+        maxGames = MAX_GAMES_LIMIT;
+        maxGamesInput.value = MAX_GAMES_LIMIT;
+    }
 
     const progressIndicator = document.getElementById('progressIndicator');
     const progressText = document.getElementById('progressText');
@@ -34,7 +50,7 @@ document.getElementById('fetchBtn').addEventListener('click', async () => {
             progressFill.style.width = `${progress}%`;
         };
         
-        const games = await fetchUserGames(username, onProgress);
+        const games = await fetchUserGames(username, maxGames, onProgress);
         const data = processChessData(games, username);
         
         // Update completion message
