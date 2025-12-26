@@ -9,16 +9,58 @@ document.getElementById('fetchBtn').addEventListener('click', async () => {
     const username = document.getElementById('usernameInput').value.trim();
     if (!username) return;
 
+    const progressIndicator = document.getElementById('progressIndicator');
+    const progressText = document.getElementById('progressText');
+    const progressFill = document.getElementById('progressFill');
+    const fetchBtn = document.getElementById('fetchBtn');
+
     try {
-        const games = await fetchUserGames(username);
+        // Show progress indicator
+        progressIndicator.style.display = 'block';
+        fetchBtn.disabled = true;
+        fetchBtn.style.opacity = '0.5';
+        
+        // Progress callback to update UI during download
+        const onProgress = (gameCount, gameDate) => {
+            const dateStr = gameDate.toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                year: 'numeric' 
+            });
+            progressText.textContent = `Downloaded ${gameCount} games (${dateStr})`;
+            
+            // Animate progress bar (indeterminate style)
+            const progress = Math.min((gameCount % 50) * 2, 100);
+            progressFill.style.width = `${progress}%`;
+        };
+        
+        const games = await fetchUserGames(username, onProgress);
         const data = processChessData(games, username);
+        
+        // Update completion message
+        progressText.textContent = `✓ Successfully loaded ${games.length} games`;
+        progressFill.style.width = '100%';
         
         // Render all UI components
         renderHeatmap(data.dailyMinutes);
         renderBarChart(data.typeDistribution);
         updateUI(data);
+        
+        // Hide progress after a short delay
+        setTimeout(() => {
+            progressIndicator.style.display = 'none';
+            progressFill.style.width = '0%';
+        }, 2000);
+        
     } catch (e) { 
-        alert(e.message); 
+        progressText.textContent = `✗ Error: ${e.message}`;
+        progressFill.style.width = '0%';
+        setTimeout(() => {
+            progressIndicator.style.display = 'none';
+        }, 3000);
+    } finally {
+        fetchBtn.disabled = false;
+        fetchBtn.style.opacity = '1';
     }
 });
 
