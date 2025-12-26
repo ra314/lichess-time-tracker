@@ -42,7 +42,14 @@
 
         <main class="dashboard-grid">
             <section class="card heatmap-section">
-                <h3>Activity Heatmap (Last 30 Days)</h3>
+                <div class="heatmap-header">
+                    <h3>Activity Heatmap (Last 30 Days)</h3>
+                    <div class="goal-setting">
+                        <label for="dailyGoalInput">Daily Goal:</label>
+                        <input type="number" id="dailyGoalInput" placeholder="Minutes" value="30" min="0" max="1440" title="Daily goal in minutes (0 to disable)">
+                        <span class="goal-label">min/day</span>
+                    </div>
+                </div>
                 <div id="heatmap" class="heatmap-container"></div>
                 <div class="heatmap-legend">
                     <span>Less</span>

@@ -8,6 +8,7 @@
     --text-main: #bababa;
     --text-bright: #ffffff;
     --danger: #ef5350;     /* Used for binge/tilt alerts */
+    --success: #66bb6a;    /* Green for goal achievement */
 }
 
 body {
@@ -91,6 +92,9 @@ body {
 .level-3 { background: #3692e7; }
 .level-4 { background: #92cbff; } /* High activity (Binge zone) */
 
+/* Goal Achievement: Overrides intensity levels when daily goal is met */
+.goal-achieved { background: var(--success) !important; border: 1px solid #4caf50; }
+
 .heatmap-legend { 
     display: flex; 
     align-items: center; 
@@ -146,4 +150,47 @@ body {
     padding: 12px 0; 
     border-bottom: 1px solid #403d39; 
     font-size: 0.95rem; 
+}
+
+/* GOAL SETTING STYLES */
+.heatmap-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.goal-setting {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+}
+
+.goal-setting label {
+    color: var(--text-main);
+    font-weight: 500;
+}
+
+.goal-setting input[type="number"] {
+    background: #1a1917;
+    border: 1px solid #403d39;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 4px;
+    width: 70px;
+    -moz-appearance: textfield;
+}
+
+.goal-setting input[type="number"]::-webkit-outer-spin-button,
+.goal-setting input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.goal-setting .goal-label {
+    color: var(--text-main);
+    font-size: 0.85rem;
 }

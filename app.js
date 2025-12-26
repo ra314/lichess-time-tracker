@@ -10,6 +10,41 @@ const MAX_GAMES_LIMIT = 5000;
 // Global reference for Chart.js instance to allow refreshing
 let myChart = null;
 
+// Store the last processed data globally for re-rendering
+let lastProcessedData = null;
+
+// Load saved daily goal and setup event listener on page load
+window.addEventListener('DOMContentLoaded', () => {
+    const dailyGoalInput = document.getElementById('dailyGoalInput');
+    
+    // Load saved goal from localStorage
+    const savedGoal = localStorage.getItem('dailyGoal');
+    if (savedGoal !== null) {
+        dailyGoalInput.value = savedGoal;
+    }
+    
+    // Handle goal changes - use 'input' event for real-time updates
+    const handleGoalChange = () => {
+        let goalValue = parseInt(dailyGoalInput.value);
+        if (isNaN(goalValue) || goalValue < 0) {
+            goalValue = 0;
+        } else if (goalValue > 1440) {
+            goalValue = 1440;
+            dailyGoalInput.value = 1440;
+        }
+        localStorage.setItem('dailyGoal', goalValue);
+        
+        // Re-render heatmap and insights if data exists
+        if (lastProcessedData !== null) {
+            renderHeatmap(lastProcessedData.dailyMinutes);
+            updateUI(lastProcessedData);
+        }
+    };
+    
+    // Listen to 'input' for real-time updates as user types
+    dailyGoalInput.addEventListener('input', handleGoalChange);
+});
+
 document.getElementById('fetchBtn').addEventListener('click', async () => {
     const username = document.getElementById('usernameInput').value.trim();
     if (!username) return;
@@ -52,6 +87,9 @@ document.getElementById('fetchBtn').addEventListener('click', async () => {
         
         const games = await fetchUserGames(username, maxGames, onProgress);
         const data = processChessData(games, username);
+        
+        // Store data globally for re-rendering when goal changes
+        lastProcessedData = data;
         
         // Update completion message
         progressText.textContent = `✓ Successfully loaded ${games.length} games`;
@@ -132,10 +170,16 @@ function processChessData(games, user) {
 /**
  * HEATMAP RENDERER (Vanilla JS):
  * Dynamically builds a grid of divs representing the last 30 days.
+ * Colors cells green when daily goal is achieved.
  */
 function renderHeatmap(dailyMinutes) {
     const container = document.getElementById('heatmap');
     container.innerHTML = '';
+    
+    // Get daily goal from input
+    const dailyGoal = parseInt(document.getElementById('dailyGoalInput').value) || 0;
+    
+    let daysGoalMet = 0;
     
     for (let i = 29; i >= 0; i--) {
         const d = new Date(); 
@@ -146,17 +190,31 @@ function renderHeatmap(dailyMinutes) {
         const cell = document.createElement('div');
         cell.className = 'day-cell';
         
-        // Intensity Thresholds
-        if (mins > 0) {
-            if (mins > 60) cell.classList.add('level-4');
-            else if (mins > 30) cell.classList.add('level-3');
-            else if (mins > 15) cell.classList.add('level-2');
-            else cell.classList.add('level-1');
+        // Check if daily goal is met (and goal is > 0)
+        const goalMet = dailyGoal > 0 && mins >= dailyGoal;
+        
+        if (goalMet) {
+            cell.classList.add('goal-achieved');
+            daysGoalMet++;
+            cell.title = `${d.toDateString()}: ${Math.round(mins)} mins ✓ Goal Achieved!`;
+        } else {
+            // Intensity Thresholds (only apply if goal not met)
+            if (mins > 0) {
+                if (mins > 60) cell.classList.add('level-4');
+                else if (mins > 30) cell.classList.add('level-3');
+                else if (mins > 15) cell.classList.add('level-2');
+                else cell.classList.add('level-1');
+            }
+            
+            const goalText = dailyGoal > 0 ? ` (${Math.round(mins)}/${dailyGoal} goal)` : '';
+            cell.title = `${d.toDateString()}: ${Math.round(mins)} mins${goalText}`;
         }
         
-        cell.title = `${d.toDateString()}: ${Math.round(mins)} mins`;
         container.appendChild(cell);
     }
+    
+    // Store for insights
+    container.dataset.daysGoalMet = daysGoalMet;
 }
 
 /**
@@ -210,9 +268,22 @@ function updateUI(data) {
         }
     }
 
-    document.getElementById('insightsList').innerHTML = `
+    // Get goal achievement data from heatmap
+    const heatmapContainer = document.getElementById('heatmap');
+    const daysGoalMet = parseInt(heatmapContainer.dataset.daysGoalMet) || 0;
+    const dailyGoal = parseInt(document.getElementById('dailyGoalInput').value) || 0;
+    
+    // Build insights with optional goal insight
+    let insightsHTML = `
         <div class="insight-item">🔥 Peak Performance: <b>${bestH >= 0 ? bestH+':00' : 'N/A'}</b> (Highest win rate).</div>
         <div class="insight-item">⚠️ Binge Warning: <b>${data.bingeCount}</b> high-density sessions detected.</div>
         <div class="insight-item">🎯 Most Active: <b>${Object.keys(data.typeDistribution).reduce((a, b) => data.typeDistribution[a] > data.typeDistribution[b] ? a : b)}</b> is your primary time sink.</div>
     `;
+    
+    if (dailyGoal > 0) {
+        const percentage = Math.round((daysGoalMet / 30) * 100);
+        insightsHTML += `<div class="insight-item">🎯 Goal Progress: Met daily goal on <b>${daysGoalMet}/30 days</b> (${percentage}%).</div>`;
+    }
+    
+    document.getElementById('insightsList').innerHTML = insightsHTML;
 }

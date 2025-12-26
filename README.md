@@ -30,7 +30,7 @@ The hour with the highest $P_h$ (minimum 4 games) is highlighted as the user's m
 - `app.js`: Data processing engine and chart rendering logic.
 
 ## 👨‍💻 Future Roadmap
-- [ ] **Daily Goals:** Allow users to set a "mins/day" goal and color the heatmap green when achieved.
+- [x] **Daily Goals:** Allow users to set a "mins/day" goal and color the heatmap green when achieved.
 - [x] **Download Number:** Number of games to download should be a configurable field on the UI.
 - [x] **Progress Bar:** Display real-time download progress showing the current date being processed and total number of games downloaded so far.
 - [ ] **Persistent Storing of Downloaded Data:** Reduce load on lichess by storing loaded games.
