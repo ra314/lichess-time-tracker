@@ -28,6 +28,7 @@
                 <label for="maxGamesInput">Max Games to Download:</label>
                 <input type="number" id="maxGamesInput" placeholder="Max Games" value="300" min="1" max="5000" title="Number of games to download (1-5000)">
                 <button id="fetchBtn">Sync Data</button>
+                <button id="syncNewBtn" class="secondary-btn" style="display: none;" title="Fetch only games played since the last sync">Sync Newer Games</button>
                 <button id="exportBtn" class="secondary-btn" title="Export downloaded games to JSON">Export</button>
                 <button id="importBtn" class="secondary-btn" title="Import games from JSON file">Import</button>
                 <input type="file" id="importFileInput" accept=".json" style="display: none;">

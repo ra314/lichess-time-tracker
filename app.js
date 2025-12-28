@@ -112,6 +112,63 @@ window.addEventListener('DOMContentLoaded', () => {
     });
     
     document.getElementById('importFileInput').addEventListener('change', handleImportFile);
+
+    // Setup Sync New button
+    document.getElementById('syncNewBtn').addEventListener('click', async () => {
+        const username = document.getElementById('usernameInput').value.trim();
+        if (!username || !gamesCacheMetadata) return;
+
+        const maxGamesInput = document.getElementById('maxGamesInput');
+        let maxGames = parseInt(maxGamesInput.value) || DEFAULT_MAX_GAMES;
+
+        const progressIndicator = document.getElementById('progressIndicator');
+        const progressText = document.getElementById('progressText');
+        const progressFill = document.getElementById('progressFill');
+        const syncNewBtn = document.getElementById('syncNewBtn');
+
+        try {
+            progressIndicator.style.display = 'block';
+            syncNewBtn.disabled = true;
+            syncNewBtn.style.opacity = '0.5';
+
+            const onProgress = (gameCount) => {
+                progressText.textContent = `Fetching new games: ${gameCount}...`;
+                progressFill.style.width = `${Math.min((gameCount % 50) * 2, 100)}%`;
+            };
+
+            // Fetch only games more recent than the current cache
+            const newerGames = await fetchUserGames(username, maxGames, onProgress, null, gamesCacheMetadata.mostRecentTimestamp);
+
+            if (newerGames.length === 0) {
+                progressText.textContent = 'Already up to date!';
+            } else {
+                const allGames = [...newerGames, ...gamesCache];
+                gamesCache = deduplicateGames(allGames);
+                updateCacheMetadata(username, gamesCache);
+
+                const data = processChessData(gamesCache, username);
+                lastProcessedData = data;
+
+                renderHeatmap(data.dailyMinutes, data.dailyMinutesByType, data.dailyGames);
+                renderBarChart(data.typeDistribution);
+                updateUI(data);
+                updateTimePeriod();
+                progressText.textContent = `✓ Added ${newerGames.length} new games`;
+            }
+
+            progressFill.style.width = '100%';
+            setTimeout(() => {
+                progressIndicator.style.display = 'none';
+            }, 10000);
+
+        } catch (e) {
+            progressText.textContent = `✗ Error: ${e.message}`;
+            setTimeout(() => progressIndicator.style.display = 'none', 10000);
+        } finally {
+            syncNewBtn.disabled = false;
+            syncNewBtn.style.opacity = '1';
+        }
+    });
 });
 
 document.getElementById('fetchBtn').addEventListener('click', async () => {
@@ -196,6 +253,9 @@ document.getElementById('fetchBtn').addEventListener('click', async () => {
         renderBarChart(data.typeDistribution);
         updateUI(data);
         updateTimePeriod();
+
+        // Show Sync New button
+        document.getElementById('syncNewBtn').style.display = 'inline-block';
         
         // Hide progress after a short delay
         setTimeout(() => {
@@ -673,6 +733,9 @@ async function handleImportFile(event) {
         renderBarChart(data.typeDistribution);
         updateUI(data);
         updateTimePeriod();
+
+        // Show Sync New button
+        document.getElementById('syncNewBtn').style.display = 'inline-block';
         
         progressText.textContent = `✓ Successfully imported ${gamesCache.length} games`;
         progressFill.style.width = '100%';
