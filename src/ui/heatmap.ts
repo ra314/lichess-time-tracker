@@ -29,15 +29,14 @@ export class HeatmapRenderer {
         this.stats.daysGoalMet = 0;
         this.stats.totalDaysWithData = 0;
 
-        // 1. Apply Filters
-        const filteredMinutes: Record<number, number> = {};
-        
+        // 1. Prepare Active Types
         // Convert filter object to array of strings ['Bullet', 'Rapid', etc.]
         const activeTypes = (Object.keys(activeFilters) as (keyof GameFilters)[])
             .filter(k => activeFilters[k])
             .map(k => k.charAt(0).toUpperCase() + k.slice(1)) as GameSpeed[];
 
-        // Recalculate daily totals based on active filters
+        // 2. Filter Minutes
+        const filteredMinutes: Record<number, number> = {};
         for (const dateStr in dailyMinutesByType) {
             const date = parseInt(dateStr);
             let total = 0;
@@ -47,13 +46,36 @@ export class HeatmapRenderer {
             if (total > 0) filteredMinutes[date] = total;
         }
 
-        // 2. Determine Date Range
-        const timestamps = Object.keys(filteredMinutes).map(t => parseInt(t));
+        // 3. Filter Games and Counts
+        const filteredGamesCount: Record<number, number> = {};
+        const filteredGamesList: Record<number, LichessGame[]> = {};
+
+        for (const dateStr in dailyGamesList) {
+            const ts = parseInt(dateStr);
+            const games = dailyGamesList[ts];
+
+            const matchingGames = games.filter(g => {
+                // Normalize game speed to match activeTypes casing (TitleCase)
+                const speedTitle = (g.speed.charAt(0).toUpperCase() + g.speed.slice(1)) as GameSpeed;
+                return activeTypes.includes(speedTitle);
+            });
+            if (matchingGames.length > 0) {
+                filteredGamesList[ts] = matchingGames;
+                filteredGamesCount[ts] = matchingGames.length;
+            }
+        }
+
+        // 4. Determine Date Range
+        const allTimestamps = new Set([
+            ...Object.keys(filteredMinutes),
+            ...Object.keys(filteredGamesCount)
+        ]);
+        const timestamps = Array.from(allTimestamps).map(t => parseInt(t));
+
         if (timestamps.length === 0) {
             this.container.innerHTML = '<p class="placeholder">No activity data available for selected filters.</p>';
             return;
         }
-
         const minDate = new Date(Math.min(...timestamps));
         const maxDate = new Date();
 
@@ -64,8 +86,7 @@ export class HeatmapRenderer {
 
         const endDate = new Date(maxDate);
         endDate.setHours(0,0,0,0);
-
-        // 3. Build DOM
+        // 5. Build DOM
         this.buildHeaderRow();
         const scrollWrapper = document.createElement('div');
         scrollWrapper.className = 'calendar-scroll-wrapper';
@@ -79,8 +100,8 @@ export class HeatmapRenderer {
         while (currentDate <= endDate) {
             const ts = currentDate.getTime();
             const mins = filteredMinutes[ts] || 0;
-            const games = dailyGames[ts] || 0;
-            const dayGamesList = dailyGamesList[ts] || [];
+            const games = filteredGamesCount[ts] || 0;
+            const dayGamesList = filteredGamesList[ts] || [];
 
             // Month Labels
             if (currentDate.getMonth() !== currentMonth) {
@@ -113,7 +134,8 @@ export class HeatmapRenderer {
             const goalValue = goalConfig.type === 'minutes' ? mins : games;
             const goalMet = goalConfig.value > 0 && goalValue >= goalConfig.value;
 
-            if (mins > 0) this.stats.totalDaysWithData++;
+            // Update stats: count day if there is any activity (minutes or games)
+            if (mins > 0 || games > 0) this.stats.totalDaysWithData++;
 
             if (goalMet) {
                 cell.classList.add('goal-achieved');
@@ -124,7 +146,9 @@ export class HeatmapRenderer {
                 cell.title = `${currentDate.toDateString()}: ${goalText} ✓ Goal Achieved!`;
             } else {
                 // Intensity classes
-                if (mins > 0) {
+                if (mins > 0 || games > 0) {
+                    // Adjust intensity based on minutes (default) or scaled somehow
+                    // For now keeping minutes logic as it's the primary heatmap driver usually
                     if (mins > 60) cell.classList.add('level-4');
                     else if (mins > 30) cell.classList.add('level-3');
                     else if (mins > 15) cell.classList.add('level-2');
