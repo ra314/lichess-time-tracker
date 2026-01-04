@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chess Accountability Dashboard</title>
+    <!-- Use CSS import in main.ts OR keep link here. Vite handles both. -->
     <link rel="icon" type="image/png" href="favicon.png">
-    
-    <link rel="stylesheet" href="style.css">
-    
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
@@ -126,8 +123,7 @@
         </main>
     </div>
 
-    <script src="api.js"></script>
-    <script src="app.js"></script>
+    <script type="module" src="/src/main.ts"></script>
 </body>
     <a href="https://www.flaticon.com/free-icons/chess-clock" title="chess clock icons">Chess clock icons created by Freepik - Flaticon</a>
 </html>
