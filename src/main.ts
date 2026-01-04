@@ -54,9 +54,7 @@ function updateUI() {
 
     // Render Visuals
     heatmap.render(
-        lastProcessedData.dailyMinutes,
         lastProcessedData.dailyMinutesByType,
-        lastProcessedData.dailyGames,
         lastProcessedData.dailyGamesList,
         { value: goalVal, type: goalType },
         activeFilters,
