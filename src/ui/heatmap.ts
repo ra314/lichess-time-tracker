@@ -22,7 +22,8 @@ export class HeatmapRenderer {
         dailyGames: Record<number, number>,
         dailyGamesList: Record<number, LichessGame[]>,
         goalConfig: { value: number; type: 'minutes' | 'games' },
-        activeFilters: GameFilters
+        activeFilters: GameFilters,
+        currentUsername: string
     ) {
         this.container.innerHTML = '';
         this.stats.daysGoalMet = 0;
@@ -140,7 +141,7 @@ export class HeatmapRenderer {
 
             // Add click listener for the game details popup
             if (dayGamesList.length > 0) {
-                cell.onclick = () => this.showDayDetails(new Date(ts), dayGamesList);
+                cell.onclick = () => this.showDayDetails(new Date(ts), dayGamesList, currentUsername);
             }
 
             currentDate.setDate(currentDate.getDate() + 1);
@@ -165,7 +166,7 @@ export class HeatmapRenderer {
         this.container.appendChild(row);
     }
 
-    private showDayDetails(date: Date, games: LichessGame[]) {
+    private showDayDetails(date: Date, games: LichessGame[], currentUsername: string) {
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         
@@ -201,30 +202,32 @@ export class HeatmapRenderer {
 
             const time = new Date(g.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             
-            const whiteWinner = g.winner === 'white';
-            const blackWinner = g.winner === 'black';
-            const isDraw = !g.winner;
+            // Determine result for current user
+            const userIsWhite = g.players.white.user?.name.toLowerCase() === currentUsername.toLowerCase();
+            const userIsBlack = g.players.black.user?.name.toLowerCase() === currentUsername.toLowerCase();
+            
+            let resultText = '½-½';
+            let resultClass = 'winner-draw';
+
+            if (g.winner) {
+                const userWon = (g.winner === 'white' && userIsWhite) || (g.winner === 'black' && userIsBlack);
+                resultText = userWon ? 'WIN' : 'LOSS';
+                resultClass = userWon ? 'winner-win' : 'winner-loss';
+            }
+
+            const initial = g.clock ? g.clock.initial / 60 : 0;
+            const inc = g.clock ? g.clock.increment : 0;
+            const timeControl = g.clock ? `${initial}+${inc}` : g.speed.toUpperCase();
 
             gameEl.innerHTML = `
                 <div class="game-time">${time}</div>
-                <div class="player-info">
+                <div class="game-info-grid">
                     <div class="player-name">⚪ ${g.players.white.user?.name || 'Anonymous'}</div>
-                    <div class="player-rating">${g.players.white.rating || '?'}</div>
-                </div>
-                <div class="game-meta">
-                    <div class="game-speed">${g.speed}</div>
-                    <div class="game-winner ${isDraw ? 'winner-draw' : (whiteWinner ? 'winner-win' : 'winner-loss')}">
-                        ${isDraw ? '½-½' : (whiteWinner ? '1-0' : '0-1')}
-                    </div>
-                </div>
-                <div class="player-info">
                     <div class="player-name">⚫ ${g.players.black.user?.name || 'Anonymous'}</div>
+                    <div class="game-result ${resultClass}">${resultText}</div>
+                    <div class="player-rating">${g.players.white.rating || '?'}</div>
                     <div class="player-rating">${g.players.black.rating || '?'}</div>
-                </div>
-                <div class="game-meta">
-                    <div class="game-winner ${isDraw ? 'winner-draw' : (blackWinner ? 'winner-win' : 'winner-loss')}">
-                        ${isDraw ? '½-½' : (blackWinner ? '1-0' : '0-1')}
-                    </div>
+                    <div class="game-time-control">${timeControl}</div>
                 </div>
             `;
             list.appendChild(gameEl);

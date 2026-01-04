@@ -59,7 +59,8 @@ function updateUI() {
         lastProcessedData.dailyGames,
         lastProcessedData.dailyGamesList,
         { value: goalVal, type: goalType },
-        activeFilters
+        activeFilters,
+        elements.username.value.trim()
     );
     
     chart.render(lastProcessedData.typeDistribution);

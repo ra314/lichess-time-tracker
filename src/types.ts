@@ -15,6 +15,11 @@ export interface LichessGame {
         white: LichessPlayer;
         black: LichessPlayer;
     };
+    clock?: {
+        initial: number;
+        increment: number;
+        totalTime: number;
+    };
 }
 
 // Internal Application Data Types

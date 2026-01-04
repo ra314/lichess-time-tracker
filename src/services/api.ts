@@ -12,7 +12,7 @@ export class ApiService {
         sinceTimestamp: number | null = null
     ): Promise<LichessGame[]> {
         
-        let url = `https://lichess.org/api/games/user/${username}?max=${maxGames}&perfType=bullet,blitz,rapid,classical&moves=false`;
+        let url = `https://lichess.org/api/games/user/${username}?max=${maxGames}&perfType=bullet,blitz,rapid,classical&moves=false&clocks=true`;
         
         if (untilTimestamp) url += `&until=${untilTimestamp}`;
         if (sinceTimestamp) url += `&since=${sinceTimestamp}`;
