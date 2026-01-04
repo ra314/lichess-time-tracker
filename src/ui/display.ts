@@ -44,8 +44,8 @@ export class DisplayManager {
             return `${display}:00 ${period}`;
         };
 
-        const activeType = Object.keys(data.typeDistribution).reduce((a, b) => 
-            data.typeDistribution[a as any] > data.typeDistribution[b as any] ? a : b
+        const activeType = (Object.keys(data.typeDistribution) as Array<keyof typeof data.typeDistribution>).reduce((a, b) =>
+            data.typeDistribution[a] > data.typeDistribution[b] ? a : b
         );
 
         let html = `

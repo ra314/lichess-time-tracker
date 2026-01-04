@@ -17,9 +17,7 @@ export class HeatmapRenderer {
     }
 
     render(
-        dailyMinutes: Record<number, number>,
         dailyMinutesByType: Record<number, Record<GameSpeed, number>>,
-        dailyGames: Record<number, number>,
         dailyGamesList: Record<number, LichessGame[]>,
         goalConfig: { value: number; type: 'minutes' | 'games' },
         activeFilters: GameFilters,
