@@ -190,8 +190,8 @@ export class HeatmapRenderer {
         const list = document.createElement('div');
         list.className = 'games-list';
 
-        // Sort by time (descending - newest first)
-        const sortedGames = [...games].sort((a, b) => b.createdAt - a.createdAt);
+        // Sort by time (descending - oldest first)
+        const sortedGames = [...games].sort((b, a) => b.createdAt - a.createdAt);
 
         sortedGames.forEach(g => {
             const gameEl = document.createElement('a');
