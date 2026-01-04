@@ -1,4 +1,4 @@
-import { GameSpeed, GameFilters } from "../types";
+import { GameSpeed, GameFilters, LichessGame } from "../types";
 import { formatMinutesToHMS } from "../utils";
 
 export class HeatmapRenderer {
@@ -20,6 +20,7 @@ export class HeatmapRenderer {
         dailyMinutes: Record<number, number>,
         dailyMinutesByType: Record<number, Record<GameSpeed, number>>,
         dailyGames: Record<number, number>,
+        dailyGamesList: Record<number, LichessGame[]>,
         goalConfig: { value: number; type: 'minutes' | 'games' },
         activeFilters: GameFilters
     ) {
@@ -78,6 +79,7 @@ export class HeatmapRenderer {
             const ts = currentDate.getTime();
             const mins = filteredMinutes[ts] || 0;
             const games = dailyGames[ts] || 0;
+            const dayGamesList = dailyGamesList[ts] || [];
 
             // Month Labels
             if (currentDate.getMonth() !== currentMonth) {
@@ -135,6 +137,12 @@ export class HeatmapRenderer {
             }
 
             grid.appendChild(cell);
+
+            // Add click listener for the game details popup
+            if (dayGamesList.length > 0) {
+                cell.onclick = () => this.showDayDetails(new Date(ts), dayGamesList);
+            }
+
             currentDate.setDate(currentDate.getDate() + 1);
         }
 
@@ -155,5 +163,81 @@ export class HeatmapRenderer {
             row.appendChild(d);
         });
         this.container.appendChild(row);
+    }
+
+    private showDayDetails(date: Date, games: LichessGame[]) {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        
+        const modal = document.createElement('div');
+        modal.className = 'modal-content';
+
+        const header = document.createElement('div');
+        header.className = 'modal-header';
+        
+        const title = document.createElement('h2');
+        title.textContent = `Games on ${date.toLocaleDateString(undefined, { dateStyle: 'long' })}`;
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'close-btn';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.onclick = () => document.body.removeChild(overlay);
+
+        header.appendChild(title);
+        header.appendChild(closeBtn);
+        modal.appendChild(header);
+
+        const list = document.createElement('div');
+        list.className = 'games-list';
+
+        // Sort by time (descending - newest first)
+        const sortedGames = [...games].sort((a, b) => b.createdAt - a.createdAt);
+
+        sortedGames.forEach(g => {
+            const gameEl = document.createElement('a');
+            gameEl.href = `https://lichess.org/${g.id}`;
+            gameEl.target = '_blank';
+            gameEl.className = 'game-item';
+
+            const time = new Date(g.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            const whiteWinner = g.winner === 'white';
+            const blackWinner = g.winner === 'black';
+            const isDraw = !g.winner;
+
+            gameEl.innerHTML = `
+                <div class="game-time">${time}</div>
+                <div class="player-info">
+                    <div class="player-name">⚪ ${g.players.white.user?.name || 'Anonymous'}</div>
+                    <div class="player-rating">${g.players.white.rating || '?'}</div>
+                </div>
+                <div class="game-meta">
+                    <div class="game-speed">${g.speed}</div>
+                    <div class="game-winner ${isDraw ? 'winner-draw' : (whiteWinner ? 'winner-win' : 'winner-loss')}">
+                        ${isDraw ? '½-½' : (whiteWinner ? '1-0' : '0-1')}
+                    </div>
+                </div>
+                <div class="player-info">
+                    <div class="player-name">⚫ ${g.players.black.user?.name || 'Anonymous'}</div>
+                    <div class="player-rating">${g.players.black.rating || '?'}</div>
+                </div>
+                <div class="game-meta">
+                    <div class="game-winner ${isDraw ? 'winner-draw' : (blackWinner ? 'winner-win' : 'winner-loss')}">
+                        ${isDraw ? '½-½' : (blackWinner ? '1-0' : '0-1')}
+                    </div>
+                </div>
+            `;
+            list.appendChild(gameEl);
+        });
+
+        modal.appendChild(list);
+        overlay.appendChild(modal);
+        
+        // Close on overlay click
+        overlay.onclick = (e) => {
+            if (e.target === overlay) document.body.removeChild(overlay);
+        };
+
+        document.body.appendChild(overlay);
     }
 }

@@ -16,6 +16,7 @@ export class DataProcessor {
         const dailyMinutes: Record<number, number> = {};
         const dailyMinutesByType: Record<number, Record<GameSpeed, number>> = {};
         const dailyGames: Record<number, number> = {};
+        const dailyGamesList: Record<number, LichessGame[]> = {};
         const typeDist: Record<GameSpeed, number> = { Bullet: 0, Blitz: 0, Rapid: 0, Classical: 0 };
         const hourlyWins: Record<number, HourlyWinStats> = {};
         let bingeCount = 0;
@@ -33,6 +34,9 @@ export class DataProcessor {
             const date = localDate.setHours(0,0,0,0);
             dailyMinutes[date] = (dailyMinutes[date] || 0) + (duration / 60000);
             dailyGames[date] = (dailyGames[date] || 0) + 1;
+
+            if (!dailyGamesList[date]) dailyGamesList[date] = [];
+            dailyGamesList[date].push(g);
 
             // 3. Type Breakdown
             const speed = capitalize(g.speed) as GameSpeed;
@@ -75,6 +79,7 @@ export class DataProcessor {
             dailyMinutes,
             dailyMinutesByType,
             dailyGames,
+            dailyGamesList,
             typeDistribution: typeDist,
             hourlyWins,
             bingeCount

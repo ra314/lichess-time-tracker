@@ -42,6 +42,8 @@ export interface AppStats {
     dailyMinutesByType: Record<number, Record<GameSpeed, number>>;
     // Map of timestamp (midnight) -> count
     dailyGames: Record<number, number>;
+    // Map of timestamp (midnight) -> games list
+    dailyGamesList: Record<number, LichessGame[]>;
     typeDistribution: Record<GameSpeed, number>;
     hourlyWins: Record<number, HourlyWinStats>;
 }

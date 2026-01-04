@@ -57,6 +57,7 @@ function updateUI() {
         lastProcessedData.dailyMinutes,
         lastProcessedData.dailyMinutesByType,
         lastProcessedData.dailyGames,
+        lastProcessedData.dailyGamesList,
         { value: goalVal, type: goalType },
         activeFilters
     );
