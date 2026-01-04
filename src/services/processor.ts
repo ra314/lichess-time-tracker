@@ -1,6 +1,15 @@
 import { AppStats, GameSpeed, HourlyWinStats, LichessGame } from "../types";
 import { capitalize } from "../utils";
 
+// Source - https://stackoverflow.com/a/34602679
+// Posted by PD81, modified by community. See post 'Timeline' for change history
+// Retrieved 2026-01-04, License - CC BY-SA 4.0
+const LOCAL_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+function getLocalDate(timestamp: number): Date {
+    return new Date(new Date(timestamp).toLocaleString('en-US', { timeZone: LOCAL_TIMEZONE }));
+}
+
 export class DataProcessor {
     static process(games: LichessGame[], user: string): AppStats {
         let totalMs = 0;
@@ -20,7 +29,8 @@ export class DataProcessor {
             totalMs += duration;
 
             // 2. Heatmap Data (Midnight Timestamp)
-            const date = new Date(g.createdAt).setHours(0,0,0,0);
+            const localDate = getLocalDate(g.createdAt);
+            const date = localDate.setHours(0,0,0,0);
             dailyMinutes[date] = (dailyMinutes[date] || 0) + (duration / 60000);
             dailyGames[date] = (dailyGames[date] || 0) + 1;
 
@@ -41,7 +51,7 @@ export class DataProcessor {
             }
 
             // 4. Hourly Wins (Local Time)
-            const hour = new Date(g.createdAt).getHours();
+            const hour = getLocalDate(g.createdAt).getHours();
             if (!hourlyWins[hour]) hourlyWins[hour] = { total: 0, wins: 0 };
             hourlyWins[hour].total++;
 
