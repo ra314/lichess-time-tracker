@@ -1,6 +1,6 @@
 # ♟️ Chess Accountability Dashboard
 
-A Steam/Strava-style activity tracker for Lichess players. This dashboard helps users transition from "mindless playing" to "intentional practice" by visualizing time spent at the board.
+A Steam/Strava-style activity tracker for Lichess players.
 
 > 🤖 **Note:** This application was originally vibe-coded using AI assistance, then refactored into a modular **TypeScript** architecture to ensure type safety and maintainability.
 
