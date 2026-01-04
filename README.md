@@ -54,3 +54,4 @@ src/
 ├── types.ts           # TypeScript interfaces for API responses and internal data
 ├── utils.ts           # Helper functions (Time formatting, Deduplication)
 └── style.css          # Dark-mode UI and custom heatmap styling
+```
