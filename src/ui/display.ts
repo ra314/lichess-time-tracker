@@ -82,8 +82,8 @@ export class DisplayManager {
         
         this.elements.timePeriod.innerText = text.trim() || '1d';
         
-        const start = new Date(metadata.earliestTimestamp).toLocaleDateString();
-        const end = new Date(metadata.mostRecentTimestamp).toLocaleDateString();
+        const start = new Date(metadata.earliestTimestamp).toLocaleDateString('en-GB');
+        const end = new Date(metadata.mostRecentTimestamp).toLocaleDateString('en-GB');
         this.elements.timePeriod.parentElement!.title = `${start} - ${end}`;
     }
 

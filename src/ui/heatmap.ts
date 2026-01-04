@@ -106,7 +106,7 @@ export class HeatmapRenderer {
                 currentMonth = currentDate.getMonth();
                 const label = document.createElement('div');
                 label.className = 'month-label';
-                label.textContent = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                label.textContent = currentDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
                 grid.appendChild(label);
             }
 

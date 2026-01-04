@@ -106,7 +106,7 @@ async function handleFetch(onlyNew: boolean = false) {
         let newGames: LichessGame[] = [];
         
         const onProgress = (count: number, date?: Date) => {
-            const dateStr = date ? date.toLocaleDateString() : '';
+            const dateStr = date ? date.toLocaleDateString('en-GB') : '';
             display.updateProgress(true, `Fetched ${count} games (${dateStr})`, Math.min((count%50)*2, 100));
         };
 
