@@ -100,6 +100,15 @@ export class HeatmapRenderer {
             dateNum.textContent = currentDate.getDate().toString();
             cell.appendChild(dateNum);
 
+            // Stats Value
+            const statsVal = document.createElement('span');
+            statsVal.className = 'stats-value';
+            const displayValue = goalConfig.type === 'minutes' ? Math.round(mins) : games;
+            if (displayValue > 0) {
+                statsVal.textContent = goalConfig.type === 'minutes' ? `${displayValue}m` : `${displayValue}`;
+            }
+            cell.appendChild(statsVal);
+
             // Goal Logic
             const goalValue = goalConfig.type === 'minutes' ? mins : games;
             const goalMet = goalConfig.value > 0 && goalValue >= goalConfig.value;
