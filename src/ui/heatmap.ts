@@ -108,6 +108,14 @@ export class HeatmapRenderer {
                 label.className = 'month-label';
                 label.textContent = currentDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
                 grid.appendChild(label);
+
+                // Add spacer cells to align the 1st of the month to the correct weekday column
+                const dayOfWeek = currentDate.getDay(); // 0=Sun, 1=Mon, ...
+                for (let i = 0; i < dayOfWeek; i++) {
+                    const spacer = document.createElement('div');
+                    spacer.className = 'day-cell spacer';
+                    grid.appendChild(spacer);
+                }
             }
 
             // Day Cell
